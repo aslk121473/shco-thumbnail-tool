@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHCO 썸네일 문구 추출기</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Pretendard','맑은 고딕',sans-serif; background:#0f0f1a; color:#e0e0e0; min-height:100vh; }
+.container { max-width:1100px; margin:0 auto; padding:24px; }
+h1 { text-align:center; font-size:28px; margin-bottom:6px; color:#fff; }
+.subtitle { text-align:center; font-size:13px; color:#888; margin-bottom:28px; }
+
+/* 입력 영역 */
+.input-area { background:#1a1a2e; border-radius:14px; padding:24px; margin-bottom:24px; border:1px solid #2a2a4a; }
+.input-area h2 { font-size:16px; margin-bottom:16px; color:#7c83ff; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+.form-group { display:flex; flex-direction:column; gap:4px; }
+.form-group.full { grid-column:1/-1; }
+.form-group label { font-size:12px; color:#999; }
+.form-group input, .form-group select, .form-group textarea {
+  background:#12121f; border:1px solid #333; border-radius:8px; padding:10px 12px;
+  color:#fff; font-size:14px; outline:none; transition:border .2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:#7c83ff; }
+.form-group textarea { resize:vertical; min-height:60px; }
+.form-group input::placeholder { color:#555; }
+
+.sub-checks { display:flex; gap:12px; flex-wrap:wrap; margin-top:4px; }
+.sub-checks label { font-size:13px; color:#ccc; cursor:pointer; display:flex; align-items:center; gap:4px; }
+.sub-checks input[type=checkbox] { accent-color:#7c83ff; }
+
+.btn-generate {
+  display:block; width:100%; margin-top:18px; padding:14px;
+  background:linear-gradient(135deg,#7c83ff,#5a5fff); border:none; border-radius:10px;
+  color:#fff; font-size:16px; font-weight:700; cursor:pointer; transition:transform .1s;
+}
+.btn-generate:hover { transform:scale(1.01); }
+.btn-generate:active { transform:scale(0.99); }
+
+.hint { font-size:11px; color:#666; margin-top:8px; text-align:center; }
+
+/* 결과 영역 */
+.results { display:flex; flex-direction:column; gap:16px; }
+.grade-section { background:#1a1a2e; border-radius:14px; padding:20px; border:1px solid #2a2a4a; }
+.grade-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.grade-badge {
+  padding:4px 12px; border-radius:20px; font-size:13px; font-weight:700; color:#fff;
+}
+.grade-Splus { background:#16a34a; }
+.grade-S { background:#22c55e; }
+.grade-A { background:#3b82f6; }
+.grade-B { background:#a855f7; }
+.grade-C { background:#eab308; color:#000; }
+.grade-F { background:#ef4444; }
+.grade-info { font-size:12px; color:#888; }
+
+.card-list { display:flex; flex-direction:column; gap:10px; }
+.card {
+  background:#12121f; border:1px solid #333; border-radius:10px; padding:16px;
+  position:relative; transition:border .2s; cursor:pointer;
+}
+.card:hover { border-color:#7c83ff; }
+.card-main { font-size:18px; font-weight:700; color:#fff; margin-bottom:6px; line-height:1.4; }
+.card-sub { font-size:14px; color:#7c83ff; margin-bottom:8px; }
+.card-sub:empty { display:none; }
+.card-meta { display:flex; gap:12px; font-size:11px; color:#666; }
+.char-count { color:#22c55e; }
+.char-count.warn { color:#eab308; }
+.char-count.bad { color:#ef4444; }
+.card-actions { position:absolute; top:12px; right:12px; display:flex; gap:6px; }
+.btn-copy, .btn-pick {
+  padding:4px 10px; border-radius:6px; font-size:11px; border:none; cursor:pointer; font-weight:600;
+}
+.btn-copy { background:#333; color:#ccc; }
+.btn-copy:hover { background:#444; }
+.btn-pick { background:#7c83ff; color:#fff; }
+.btn-pick:hover { background:#5a5fff; }
+
+.card-pattern { font-size:11px; color:#555; margin-top:6px; }
+.card-example { font-size:11px; color:#444; margin-top:2px; font-style:italic; }
+
+/* 제목 추천 */
+.title-section { margin-top:8px; padding-top:12px; border-top:1px solid #2a2a4a; }
+.title-label { font-size:11px; color:#666; margin-bottom:4px; }
+.title-text { font-size:13px; color:#aaa; line-height:1.4; }
+
+/* 히스토리 */
+.history { background:#1a1a2e; border-radius:14px; padding:20px; margin-top:24px; border:1px solid #2a2a4a; }
+.history h3 { font-size:14px; color:#7c83ff; margin-bottom:10px; }
+.history-list { display:flex; flex-direction:column; gap:6px; }
+.history-item { font-size:13px; color:#ccc; padding:8px 12px; background:#12121f; border-radius:8px; display:flex; justify-content:space-between; }
+.history-item .del { color:#666; cursor:pointer; font-size:11px; }
+.history-item .del:hover { color:#ef4444; }
+.empty-history { font-size:12px; color:#555; text-align:center; padding:12px; }
+
+@media (max-width:700px) {
+  .form-grid { grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎬 SHCO 썸네일 문구 추출기</h1>
+  <p class="subtitle">4개 채널 83개 실제 썸네일 분석 데이터 기반 | 등급별 자동 생성</p>
+
+  <div class="input-area">
+    <h2>📝 입력 (안 채워도 실행 가능, 채울수록 정확도↑)</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>영상 제목 또는 대본 요약</label>
+        <textarea id="title" placeholder="예: 바이마에서 무신사 제품 팔아서 매달 8천만원 버는 32살 청년 인터뷰"></textarea>
+      </div>
+      <div class="form-group">
+        <label>수익 금액</label>
+        <input type="text" id="revenue" placeholder="예: 8000만원, 2억, 1000">
+      </div>
+      <div class="form-group">
+        <label>나이</label>
+        <input type="text" id="age" placeholder="예: 32살, 40대, 93년생">
+      </div>
+      <div class="form-group">
+        <label>브랜드/장소명</label>
+        <input type="text" id="brand" placeholder="예: 무신사, 올리브영, 코스트코">
+      </div>
+      <div class="form-group">
+        <label>사업유형</label>
+        <select id="bizType">
+          <option value="">선택 (선택사항)</option>
+          <option value="구매대행">구매대행</option>
+          <option value="역직구">역직구</option>
+          <option value="브랜드유통">브랜드유통</option>
+          <option value="쇼핑몰">쇼핑몰/에이블리</option>
+          <option value="숏폼">숏폼/쇼츠</option>
+          <option value="위탁판매">위탁판매</option>
+          <option value="SNS수익화">SNS수익화</option>
+          <option value="AI부업">AI부업</option>
+          <option value="부동산">부동산/경매</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>원가 (마진강조 패턴용)</label>
+        <input type="text" id="cost" placeholder="예: 900원, 1000원, 0원">
+      </div>
+      <div class="form-group">
+        <label>강한 동사</label>
+        <select id="verb">
+          <option value="">자동 선택</option>
+          <option value="때려치고">때려치고</option>
+          <option value="쓸어담는">쓸어담는</option>
+          <option value="떼다 팔아">떼다 팔아</option>
+          <option value="사와서">사와서</option>
+          <option value="올려서">올려서</option>
+          <option value="만들어">만들어</option>
+          <option value="차려서">차려서</option>
+          <option value="팔아서">팔아서</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>서브 텍스트 유형 (복수 선택 가능)</label>
+        <div class="sub-checks">
+          <label><input type="checkbox" id="sub99" value="99"> 99% 몰라요</label>
+          <label><input type="checkbox" id="subProof" value="proof"> 수익 증거 캡처</label>
+          <label><input type="checkbox" id="subQuote" value="quote"> 인용문/감탄</label>
+          <label><input type="checkbox" id="subEasy" value="easy"> 진입장벽↓ (쉬워요)</label>
+          <label><input type="checkbox" id="subCta" value="cta"> 무료특강/CTA</label>
+          <label><input type="checkbox" id="subNone" value="none"> 서브 없음</label>
+        </div>
+      </div>
+    </div>
+    <button class="btn-generate" onclick="generate()">🚀 썸네일 문구 생성</button>
+    <p class="hint">모든 필드는 선택사항입니다. 빈칸으로 생성하면 기본 템플릿이 출력됩니다.</p>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <div class="history" id="historySection" style="display:none">
+    <h3>📌 선택한 썸네일 히스토리</h3>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<script>
+// ── 패턴 데이터 (실제 분석 기반) ──
+const PATTERNS = {
+  'S+': {
+    label: 'S+', color: 'Splus', expect: '30만+',
+    desc: '브랜드+행위+수익+나이 (SHCO 1위 150만회 패턴)',
+    templates: [
+      { main: '{brand} 떼다 팔아 월 {revenue} 버는 {age}', sub: '99%는 몰라요', need: ['brand','revenue','age'] },
+      { main: '{brand} {verb} 월 {revenue} 버는 {age}', sub: '"쿠팡 왜 해요?"', need: ['brand','revenue','age'] },
+      { main: '{cost}짜리 {verb} 월 {revenue} 버는 {age}', sub: '99%는 몰라요', need: ['cost','revenue','age'] },
+      { main: '아는 사람만 꿀 빨고 있는 월 {revenue} 블루오션 부업', sub: '99%는 몰라요', need: ['revenue'] },
+    ]
+  },
+  'S': {
+    label: 'S', color: 'S', expect: '15만+',
+    desc: '원가+수익+나이 / 쿠팡때려치고 (사찍남·옆집CEO 상위 패턴)',
+    templates: [
+      { main: '{cost}짜리 팔아 월 {revenue} 올린 {age}', sub: '', need: ['cost','revenue','age'] },
+      { main: '쿠팡 때려치고 여기서 월 {revenue}씩 법니다', sub: '뻔한 부업 아님X', need: ['revenue'] },
+      { main: '{cost}짜리 {revenue}에 팔아 월 {revenue} 버는 {age}', sub: '', need: ['cost','revenue','age'] },
+      { main: '요즘 MZ들은 쿠팡 말고 이걸로 돈 쓸어담아요', sub: '월 {revenue} 블루오션', need: ['revenue'] },
+    ]
+  },
+  'A': {
+    label: 'A', color: 'A', expect: '8만+',
+    desc: '행위+수익+나이 / AI도구+수익 (4채널 공통)',
+    templates: [
+      { main: '{biz} {verb} 월 {revenue} 버는 {age}', sub: '', need: ['revenue','age'] },
+      { main: '회사 때려치고 {biz} 매달 연봉버는 {age}', sub: '', need: ['age'] },
+      { main: 'AI로 {biz} 월 {revenue} 찍는 {age}', sub: '대부분 몰라서 안해요', need: ['revenue','age'] },
+      { main: '{brand} {verb} 월 {revenue} 찍는 {age}', sub: '이게 된다고...?', need: ['revenue','age'] },
+      { main: '외국인들만 꿀 빨고 있는 월 {revenue} {biz}', sub: '99%가 몰라서 못해요', need: ['revenue'] },
+    ]
+  },
+  'B': {
+    label: 'B', color: 'B', expect: '3만+',
+    desc: '수익+나이 / 행위+수익 (기본 공식)',
+    templates: [
+      { main: '월 {revenue} 버는 {age}', sub: '{biz}', need: ['revenue','age'] },
+      { main: '{biz}으로 월 {revenue} 버는 {age}', sub: '', need: ['revenue','age'] },
+      { main: '퇴근하고 집에서 월 {revenue} 찍는 {age}', sub: '부업으로...', need: ['revenue','age'] },
+      { main: '0원으로 {biz} 시작해서 월 {revenue}', sub: '하루 {x}개는 그냥 팔려요!', need: ['revenue'] },
+    ]
+  },
+  'C': {
+    label: 'C', color: 'C', expect: '1만',
+    desc: '인용문+수익 (효과 제한적)',
+    templates: [
+      { main: '"하루 {x}시간만 일해요" 월 {revenue} 버는 {age}', sub: '', need: ['revenue'] },
+      { main: '"이거 왜 안해요?" {biz} 월 {revenue}', sub: '', need: ['revenue'] },
+      { main: '부업으로 시작하고 퇴사했습니다!', sub: '→ 한달에 월 {revenue} 버는', need: ['revenue'] },
+    ]
+  },
+  'F': {
+    label: 'F', color: 'F', expect: '3천↓',
+    desc: '⛔ 교육형 단독 - 수익 숫자 없음 (역효과)',
+    templates: [
+      { main: '{biz} 소싱 꿀팁', sub: '', warn: true, need: [] },
+      { main: '{biz} 처음부터 끝까지 알려드립니다', sub: '', warn: true, need: [] },
+      { main: '{biz} 시작! 뭐부터 해야할지 모르겠다면', sub: 'EP.{x}', warn: true, need: [] },
+    ]
+  }
+};
+
+const VERBS = ['때려치고','쓸어담는','떼다 팔아','사와서','올려서','만들어','차려서','팔아서'];
+const SUBS_99 = ['99%는 몰라요','대부분 몰라서 안해요','아는 사람만 꿀 빨고 있는'];
+const SUBS_EASY = ['복사+붙여넣기 난이도 최하','해보면 너무 쉬워요','30초면 끝!','이게 된다고...?'];
+const SUBS_QUOTE = ['"쿠팡 왜 해요?"','"이거 왜 안해요?"','"이게 된다고요?!"'];
+const SUBS_CTA = ['<무료특강 참여하기>','<참여 즉시 전자책 무료 제공>'];
+
+function getInputs() {
+  return {
+    title: document.getElementById('title').value.trim(),
+    revenue: document.getElementById('revenue').value.trim(),
+    age: document.getElementById('age').value.trim(),
+    brand: document.getElementById('brand').value.trim(),
+    bizType: document.getElementById('bizType').value,
+    cost: document.getElementById('cost').value.trim(),
+    verb: document.getElementById('verb').value,
+    sub99: document.getElementById('sub99').checked,
+    subProof: document.getElementById('subProof').checked,
+    subQuote: document.getElementById('subQuote').checked,
+    subEasy: document.getElementById('subEasy').checked,
+    subCta: document.getElementById('subCta').checked,
+    subNone: document.getElementById('subNone').checked,
+  };
+}
+
+function fillTemplate(tpl, inp) {
+  let main = tpl.main;
+  let sub = tpl.sub;
+
+  const rev = inp.revenue || 'X만원';
+  const age = inp.age || 'XX살';
+  const brand = inp.brand || '브랜드';
+  const biz = inp.bizType || '부업';
+  const cost = inp.cost || 'X원';
+  const verb = inp.verb || VERBS[Math.floor(Math.random()*3)];
+
+  main = main.replace(/{revenue}/g, rev).replace(/{age}/g, age)
+    .replace(/{brand}/g, brand).replace(/{biz}/g, biz)
+    .replace(/{cost}/g, cost).replace(/{verb}/g, verb)
+    .replace(/{x}/g, String(Math.floor(Math.random()*5)+1));
+
+  sub = sub.replace(/{revenue}/g, rev).replace(/{age}/g, age)
+    .replace(/{brand}/g, brand).replace(/{biz}/g, biz)
+    .replace(/{cost}/g, cost).replace(/{x}/g, String(Math.floor(Math.random()*10)+1));
+
+  // 서브 텍스트 오버라이드
+  if (inp.sub99) sub = SUBS_99[Math.floor(Math.random()*SUBS_99.length)];
+  else if (inp.subEasy) sub = SUBS_EASY[Math.floor(Math.random()*SUBS_EASY.length)];
+  else if (inp.subQuote) sub = SUBS_QUOTE[Math.floor(Math.random()*SUBS_QUOTE.length)];
+  else if (inp.subCta) sub = SUBS_CTA[Math.floor(Math.random()*SUBS_CTA.length)];
+  else if (inp.subNone) sub = '';
+
+  // 플레이스홀더가 그대로 남은 경우만 건너뛰기
+  if (main === '브랜드 떼다 팔아 월 X만원 버는 XX살' && !inp.brand && !inp.revenue && !inp.age) return null;
+
+  return { main, sub, warn: tpl.warn || false };
+}
+
+// S등급 원가 템플릿 - 원가 없으면 대체 생성
+function generateFallbacks(grade, inp) {
+  const rev = inp.revenue || 'X만원';
+  const age = inp.age || 'XX살';
+  const brand = inp.brand || '';
+  const biz = inp.bizType || '부업';
+  const verb = inp.verb || '팔아서';
+
+  const fallbacks = {
+    'S+': [
+      { main: `${brand || biz} 떼다 팔아 월 ${rev} 버는 ${age}`, sub: '99%는 몰라요' },
+      { main: `아는 사람만 꿀 빨고 있는 월 ${rev} 블루오션 부업`, sub: '99%는 몰라요' },
+      { main: `${brand || biz} ${verb} 월 ${rev} ${age}`, sub: '"쿠팡 왜 해요?"' },
+    ],
+    'S': [
+      { main: `직장 때려치고 ${biz}으로 월 ${rev}씩 법니다`, sub: '뻔한 부업 아님X' },
+      { main: `요즘 MZ들은 쿠팡 말고 이걸로 돈 쓸어담아요`, sub: `월 ${rev} 블루오션` },
+      { main: `남들 다 쿠팡 할때 ${biz}으로 월 ${rev} 쓸어담는`, sub: '' },
+    ],
+    'A': [
+      { main: `${biz} ${verb} 월 ${rev} 버는 ${age}`, sub: '' },
+      { main: `회사 때려치고 ${biz} 매달 연봉버는 ${age}`, sub: '' },
+      { main: `외국인들만 꿀 빨고 있는 월 ${rev} ${biz}`, sub: '99%가 몰라서 못해요' },
+      { main: `AI로 ${biz} 월 ${rev} 찍는 ${age}`, sub: '대부분 몰라서 안해요' },
+      { main: `${brand || biz} ${verb} 월 ${rev} 찍는 ${age}`, sub: '이게 된다고...?' },
+    ],
+    'B': [
+      { main: `월 ${rev} 버는 ${age}`, sub: biz },
+      { main: `${biz}으로 월 ${rev} 버는 ${age}`, sub: '' },
+      { main: `퇴근하고 집에서 월 ${rev} 찍는 ${age}`, sub: '부업으로...' },
+      { main: `0원으로 ${biz} 시작해서 월 ${rev}`, sub: '하루에 그냥 팔려요!' },
+    ],
+    'C': [
+      { main: `"하루 2시간만 일해요" 월 ${rev} 버는 ${age}`, sub: '' },
+      { main: `"이거 왜 안해요?" ${biz} 월 ${rev}`, sub: '' },
+      { main: `부업으로 시작하고 퇴사했습니다!`, sub: `→ 한달에 월 ${rev} 버는` },
+    ],
+    'F': [
+      { main: `${biz} 소싱 꿀팁`, sub: '', warn: true },
+      { main: `${biz} 처음부터 끝까지 알려드립니다`, sub: '', warn: true },
+      { main: `${biz} 시작! 뭐부터 해야할지 모르겠다면`, sub: '', warn: true },
+    ],
+  };
+  return fallbacks[grade] || [];
+}
+
+function generateTitle(inp) {
+  const rev = inp.revenue || 'X만원';
+  const age = inp.age || 'XX살';
+  const brand = inp.brand || '';
+  const biz = inp.bizType || '부업';
+
+  const titleTemplates = [
+    `다들 모르는 '틈새시장' 발견하고 월 ${rev} 쓸어담고 퇴사 성공한 ${age}`,
+    `남들 다 쿠팡 할때 ${brand ? brand+'에 ' : ''}${biz}으로 매달 연봉 버는 ${age}`,
+    `${brand || biz} ${age}가 월 ${rev} 찍는 비결`,
+    `"부업으로 이걸 안하더라구요" 하루 2시간 일하고 월 ${rev} 버는 ${age}`,
+  ];
+  return titleTemplates[Math.floor(Math.random()*titleTemplates.length)];
+}
+
+function charClass(len) {
+  if (len >= 11 && len <= 20) return 'char-count';
+  if (len >= 8 && len <= 25) return 'char-count warn';
+  return 'char-count bad';
+}
+
+function generate() {
+  const inp = getInputs();
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = '';
+  setTimeout(() => resultsDiv.scrollIntoView({behavior:'smooth', block:'start'}), 100);
+
+  const grades = ['S+','S','A','B','C','F'];
+
+  for (const grade of grades) {
+    const pat = PATTERNS[grade];
+    const cards = [];
+
+    for (const tpl of pat.templates) {
+      const result = fillTemplate(tpl, inp);
+      if (!result) continue;
+      if (cards.some(c => c.main === result.main)) continue;
+      cards.push(result);
+    }
+
+    // fallback 추가
+    const fb = generateFallbacks(grade, inp);
+    for (const f of fb) {
+      if (cards.some(c => c.main === f.main)) continue;
+      cards.push(f);
+    }
+
+    if (cards.length === 0) continue;
+
+    const sectionHtml = `
+      <div class="grade-section">
+        <div class="grade-header">
+          <span class="grade-badge grade-${pat.color}">${pat.label}</span>
+          <span class="grade-info">기대 조회수 ${pat.expect} | ${pat.desc}</span>
+        </div>
+        <div class="card-list">
+          ${cards.map((c, i) => {
+            const mainLen = c.main.replace(/[{}]/g,'').length;
+            const titleSuggestion = grade !== 'F' ? generateTitle(inp) : '';
+            return `
+              <div class="card" ${c.warn ? 'style="border-color:#ef4444;opacity:0.7"' : ''}>
+                <div class="card-actions">
+                  <button class="btn-copy" onclick="copyText(this, '${c.main.replace(/'/g,"\\'")}')">복사</button>
+                  <button class="btn-pick" onclick="pickThumb('${grade}','${c.main.replace(/'/g,"\\'")}','${(c.sub||'').replace(/'/g,"\\'")}')">선택</button>
+                </div>
+                <div class="card-main">${c.warn ? '⛔ ' : ''}${c.main}</div>
+                ${c.sub ? `<div class="card-sub">→ ${c.sub}</div>` : ''}
+                <div class="card-meta">
+                  <span class="${charClass(mainLen)}">메인 ${mainLen}자 ${mainLen>=11&&mainLen<=20?'✅ 최적':mainLen<11?'⚠️ 짧음':'⚠️ 길 수 있음'}</span>
+                  ${c.sub ? `<span>서브 ${c.sub.length}자</span>` : ''}
+                </div>
+                ${c.warn ? '<div class="card-pattern">⛔ 교육형 단독은 조회수 3천 이하. 수익 숫자를 메인에 추가하세요.</div>' : ''}
+                ${titleSuggestion ? `
+                  <div class="title-section">
+                    <div class="title-label">💡 제목 추천 (썸네일과 다르게):</div>
+                    <div class="title-text">${titleSuggestion}</div>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+    resultsDiv.innerHTML += sectionHtml;
+  }
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓';
+    setTimeout(() => btn.textContent = '복사', 1500);
+  });
+}
+
+function pickThumb(grade, main, sub) {
+  const history = JSON.parse(localStorage.getItem('thumbHistory') || '[]');
+  history.unshift({ grade, main, sub, time: new Date().toLocaleString('ko-KR') });
+  if (history.length > 30) history.pop();
+  localStorage.setItem('thumbHistory', JSON.stringify(history));
+  renderHistory();
+
+  // 피드백
+  const btn = event.target;
+  btn.textContent = '✓ 저장됨';
+  btn.style.background = '#16a34a';
+  setTimeout(() => { btn.textContent = '선택'; btn.style.background = ''; }, 1500);
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('thumbHistory') || '[]');
+  const section = document.getElementById('historySection');
+  const list = document.getElementById('historyList');
+
+  if (history.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  list.innerHTML = history.map((h, i) => `
+    <div class="history-item">
+      <span><span class="grade-badge grade-${h.grade === 'S+' ? 'Splus' : h.grade}" style="font-size:10px;padding:2px 6px">${h.grade}</span> ${h.main}${h.sub ? ' → '+h.sub : ''}</span>
+      <span class="del" onclick="delHistory(${i})">✕</span>
+    </div>
+  `).join('');
+}
+
+function delHistory(i) {
+  const history = JSON.parse(localStorage.getItem('thumbHistory') || '[]');
+  history.splice(i, 1);
+  localStorage.setItem('thumbHistory', JSON.stringify(history));
+  renderHistory();
+}
+
+// 초기 히스토리 렌더
+renderHistory();
+</script>
+</body>
+</html>
