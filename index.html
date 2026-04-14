@@ -129,12 +129,13 @@ h1 { text-align:center; font-size:28px; margin-bottom:6px; color:#fff; }
           <option value="">선택 (선택사항)</option>
           <option value="구매대행">구매대행</option>
           <option value="역직구">역직구</option>
-          <option value="브랜드유통">브랜드유통</option>
+          <option value="명품구매대행">명품구매대행/리셀</option>
+          <option value="브랜드유통">브랜드유통/도매</option>
           <option value="쇼핑몰">쇼핑몰/에이블리</option>
-          <option value="숏폼">숏폼/쇼츠</option>
           <option value="위탁판매">위탁판매</option>
+          <option value="숏폼">숏폼/쇼츠</option>
           <option value="SNS수익화">SNS수익화</option>
-          <option value="AI부업">AI부업</option>
+          <option value="AI부업">AI부업/콘텐츠</option>
           <option value="부동산">부동산/경매</option>
           <option value="기타">기타</option>
         </select>
@@ -181,76 +182,182 @@ h1 { text-align:center; font-size:28px; margin-bottom:6px; color:#fff; }
   </div>
 </div>
 
+
 <script>
-// ── 패턴 데이터 (실제 분석 기반) ──
-const PATTERNS = {
-  'S+': {
-    label: 'S+', color: 'Splus', expect: '30만+',
-    desc: '브랜드+행위+수익+나이 (SHCO 1위 150만회 패턴)',
-    templates: [
-      { main: '{brand} 떼다 팔아 월 {revenue} 버는 {age}', sub: '99%는 몰라요', need: ['brand','revenue','age'] },
-      { main: '{brand} {verb} 월 {revenue} 버는 {age}', sub: '"쿠팡 왜 해요?"', need: ['brand','revenue','age'] },
-      { main: '{cost}짜리 {verb} 월 {revenue} 버는 {age}', sub: '99%는 몰라요', need: ['cost','revenue','age'] },
-      { main: '아는 사람만 꿀 빨고 있는 월 {revenue} 블루오션 부업', sub: '99%는 몰라요', need: ['revenue'] },
-    ]
-  },
-  'S': {
-    label: 'S', color: 'S', expect: '15만+',
-    desc: '원가+수익+나이 / 쿠팡때려치고 (사찍남·옆집CEO 상위 패턴)',
-    templates: [
-      { main: '{cost}짜리 팔아 월 {revenue} 올린 {age}', sub: '', need: ['cost','revenue','age'] },
-      { main: '쿠팡 때려치고 여기서 월 {revenue}씩 법니다', sub: '뻔한 부업 아님X', need: ['revenue'] },
-      { main: '{cost}짜리 {revenue}에 팔아 월 {revenue} 버는 {age}', sub: '', need: ['cost','revenue','age'] },
-      { main: '요즘 MZ들은 쿠팡 말고 이걸로 돈 쓸어담아요', sub: '월 {revenue} 블루오션', need: ['revenue'] },
-    ]
-  },
-  'A': {
-    label: 'A', color: 'A', expect: '8만+',
-    desc: '행위+수익+나이 / AI도구+수익 (4채널 공통)',
-    templates: [
-      { main: '{biz} {verb} 월 {revenue} 버는 {age}', sub: '', need: ['revenue','age'] },
-      { main: '회사 때려치고 {biz} 매달 연봉버는 {age}', sub: '', need: ['age'] },
-      { main: 'AI로 {biz} 월 {revenue} 찍는 {age}', sub: '대부분 몰라서 안해요', need: ['revenue','age'] },
-      { main: '{brand} {verb} 월 {revenue} 찍는 {age}', sub: '이게 된다고...?', need: ['revenue','age'] },
-      { main: '외국인들만 꿀 빨고 있는 월 {revenue} {biz}', sub: '99%가 몰라서 못해요', need: ['revenue'] },
-    ]
-  },
-  'B': {
-    label: 'B', color: 'B', expect: '3만+',
-    desc: '수익+나이 / 행위+수익 (기본 공식)',
-    templates: [
-      { main: '월 {revenue} 버는 {age}', sub: '{biz}', need: ['revenue','age'] },
-      { main: '{biz}으로 월 {revenue} 버는 {age}', sub: '', need: ['revenue','age'] },
-      { main: '퇴근하고 집에서 월 {revenue} 찍는 {age}', sub: '부업으로...', need: ['revenue','age'] },
-      { main: '0원으로 {biz} 시작해서 월 {revenue}', sub: '하루 {x}개는 그냥 팔려요!', need: ['revenue'] },
-    ]
-  },
-  'C': {
-    label: 'C', color: 'C', expect: '1만',
-    desc: '인용문+수익 (효과 제한적)',
-    templates: [
-      { main: '"하루 {x}시간만 일해요" 월 {revenue} 버는 {age}', sub: '', need: ['revenue'] },
-      { main: '"이거 왜 안해요?" {biz} 월 {revenue}', sub: '', need: ['revenue'] },
-      { main: '부업으로 시작하고 퇴사했습니다!', sub: '→ 한달에 월 {revenue} 버는', need: ['revenue'] },
-    ]
-  },
-  'F': {
-    label: 'F', color: 'F', expect: '3천↓',
-    desc: '⛔ 교육형 단독 - 수익 숫자 없음 (역효과)',
-    templates: [
-      { main: '{biz} 소싱 꿀팁', sub: '', warn: true, need: [] },
-      { main: '{biz} 처음부터 끝까지 알려드립니다', sub: '', warn: true, need: [] },
-      { main: '{biz} 시작! 뭐부터 해야할지 모르겠다면', sub: 'EP.{x}', warn: true, need: [] },
-    ]
-  }
+// ── 키워드 사전 (카테고리 자동 분류) ──
+const KEYWORD_DICT = {
+  '명품': ['샤넬','에르메스','루이비통','구찌','프라다','디올','발렌시아가','셀린느','버버리','보테가','명품','럭셔리','롤렉스','까르띠에','티파니','오메가'],
+  'K뷰티': ['올리브영','화장품','K뷰티','스킨케어','뷰티','더페이스샵','이니스프리','아모레','LG생활건강','마스크팩','선크림'],
+  '패션': ['무신사','에이블리','나이키','아디다스','뉴발란스','ABC마트','옷','신발','패션','의류','지그재그','브랜디'],
+  '식품유통': ['과일','식품','농산물','코스트코','이마트','식자재','건강식품','반찬','커피','차'],
+  'AI디지털': ['AI','챗GPT','숏폼','쇼츠','블로그','인스타','스레드','샤오홍슈','릴스','유튜브','영상','콘텐츠','자동화'],
+  '부동산': ['빌라','경매','부동산','땅','아파트','토지','건물','모텔','원룸','상가'],
 };
 
-const VERBS = ['때려치고','쓸어담는','떼다 팔아','사와서','올려서','만들어','차려서','팔아서'];
-const SUBS_99 = ['99%는 몰라요','대부분 몰라서 안해요','아는 사람만 꿀 빨고 있는'];
-const SUBS_EASY = ['복사+붙여넣기 난이도 최하','해보면 너무 쉬워요','30초면 끝!','이게 된다고...?'];
-const SUBS_QUOTE = ['"쿠팡 왜 해요?"','"이거 왜 안해요?"','"이게 된다고요?!"'];
-const SUBS_CTA = ['<무료특강 참여하기>','<참여 즉시 전자책 무료 제공>'];
+// 사업유형→카테고리 매핑
+const BIZ_CATEGORY = {
+  '명품구매대행': '명품', '부동산': '부동산', 'AI부업': 'AI디지털',
+  '숏폼': 'AI디지털', 'SNS수익화': 'AI디지털',
+};
 
+// ── 카테고리 자동 감지 ──
+function detectCategory(inp) {
+  // 1순위: 사업유형 드롭다운
+  if (inp.bizType && BIZ_CATEGORY[inp.bizType]) return BIZ_CATEGORY[inp.bizType];
+  // 2순위: 브랜드 키워드 매칭
+  const allText = `${inp.brand} ${inp.title} ${inp.bizType}`.toLowerCase();
+  for (const [cat, keywords] of Object.entries(KEYWORD_DICT)) {
+    for (const kw of keywords) {
+      if (allText.includes(kw.toLowerCase())) return cat;
+    }
+  }
+  // 3순위: 기본
+  return '일반';
+}
+
+// ── 카테고리별 동사 풀 ──
+function getVerbs(cat) {
+  const map = {
+    '명품': ['팔아서','유통해서','공급받아'],
+    'K뷰티': ['떼다 팔아','팔아서','수출해서'],
+    '패션': ['떼다 팔아','올려서','팔아서'],
+    '식품유통': ['사와서','떼다 팔아','유통해서'],
+    'AI디지털': ['만들어서','올려서','활용해서'],
+    '부동산': ['사서','투자해서','인수해서'],
+    '일반': ['떼다 팔아','팔아서','올려서','사와서'],
+  };
+  return map[cat] || map['일반'];
+}
+
+// ── 카테고리별 서브 텍스트 풀 ──
+function getSubPool(cat, brand) {
+  const map = {
+    '명품': [`"${brand||'명품'} 정가의 반값"`,'"마진이 이 정도?"','"진품만 취급합니다"',`"${brand||'명품'} 이 가격 실화?"`,'"아는 사람만 삽니다"'],
+    'K뷰티': ['"부가세까지 환급"','"K뷰티 해외에서 미쳤다"','"쿠팡 왜 해요?"','동남아에서 난리남','"이거 왜 안해요?"'],
+    '패션': ['"일본에서 더 비싸게 팔려요"','"이거 왜 안해요?"','국내보다 해외가 비쌈','"99%는 몰라요"'],
+    '식품유통': ['"하루에 300개 그냥 팔려요"','"원가 공개합니다"','"마트보다 싸게 유통"','"이게 된다고?!"'],
+    'AI디지털': ['"99%는 몰라요"','"대부분 몰라서 안해요"','"이게 된다고?!"','"쉬운데 안 해요"','복사+붙여넣기 가능'],
+    '부동산': ['"이 가격에 가능?"','"감정가 대비 반값"','"경매 초보도 가능"','"수익률 공개"'],
+    '일반': ['"99%는 몰라요"','"이거 왜 안해요?"','"이게 된다고?!"','대부분 몰라서 안해요','"쿠팡 왜 해요?"'],
+  };
+  return map[cat] || map['일반'];
+}
+
+// ── 카테고리별 템플릿 ──
+function getTemplates(cat, inp) {
+  const rev = inp.revenue || 'X만원';
+  const age = inp.age || 'XX살';
+  const brand = inp.brand || '';
+  const biz = inp.bizType || '부업';
+  const cost = inp.cost || '';
+  const verbs = getVerbs(cat);
+  const verb = inp.verb || verbs[0];
+  const subs = getSubPool(cat, brand);
+  const rsub = () => subs[Math.floor(Math.random()*subs.length)];
+
+  // 사용자가 서브 체크박스 선택했으면 그걸 우선
+  let userSub = null;
+  if (inp.sub99) userSub = '"99%는 몰라요"';
+  else if (inp.subProof) userSub = '수익 증거 캡처';
+  else if (inp.subQuote) userSub = rsub();
+  else if (inp.subEasy) userSub = '해보면 너무 쉬워요';
+  else if (inp.subCta) userSub = '<무료특강 참여하기>';
+  else if (inp.subNone) userSub = '';
+
+  const s = (def) => userSub !== null ? userSub : def;
+
+  const brandOrBiz = brand || biz;
+
+  const templates = {
+    'S+': [
+      { main: `${brandOrBiz} ${verb} 월 ${rev} 버는 ${age}`, sub: s(rsub()) },
+      brand && { main: `${brand} ${verb} 월 ${rev} 버는 ${age}`, sub: s(rsub()) },
+      cost && { main: `${cost}짜리 ${verb} 월 ${rev} 버는 ${age}`, sub: s(rsub()) },
+      { main: `아는 사람만 꿀 빨고 있는 월 ${rev} ${biz}`, sub: s(rsub()) },
+    ],
+    'S': [
+      cost && { main: `${cost}짜리 팔아 월 ${rev} 올린 ${age}`, sub: s('') },
+      { main: `직장 때려치고 ${biz}으로 월 ${rev}씩 법니다`, sub: s('') },
+      cat !== '부동산' && cat !== 'AI디지털' && { main: `${brandOrBiz} ${verb} 매달 연봉 쓸어담는 ${age}`, sub: s('') },
+      cat === '부동산' && { main: `${cost||'X원'}짜리 ${brand||'빌라'} 사서 ${rev} 번 ${age}`, sub: s('') },
+      cat === 'AI디지털' && { main: `AI로 ${biz} 월 ${rev} 찍는 ${age}`, sub: s('"대부분 몰라서 안해요"') },
+    ],
+    'A': [
+      { main: `${biz} ${verb} 월 ${rev} 버는 ${age}`, sub: s('') },
+      { main: `회사 때려치고 ${biz} 매달 연봉버는 ${age}`, sub: s('') },
+      brand && { main: `${brand} ${verb} 월 ${rev} 찍는 ${age}`, sub: s('"이게 된다고...?"') },
+      cat === 'K뷰티' && { main: `동남아에 ${brand||'올리브영'} 떼다 팔아 월 ${rev} 버는 ${age}`, sub: s('"부가세까지 환급"') },
+      cat === '패션' && { main: `일본에 ${brand||'무신사'} 떼다 팔아 월 ${rev} 버는 ${age}`, sub: s('"일본에서 더 비싸게"') },
+      cat === '명품' && { main: `${brand||'명품'} 유통해서 월 ${rev} 버는 ${age}`, sub: s(`"${brand||'명품'} 이 가격 실화?"`) },
+      cat === 'AI디지털' && { main: `AI로 ${biz} 만들어 월 ${rev} 버는 ${age}`, sub: s('"99%는 몰라요"') },
+      cat === '부동산' && { main: `${brand||'빌라'} 사서 ${rev} 번 ${age}`, sub: s('"이 가격에 가능?"') },
+      cat === '식품유통' && { main: `${brand||'코스트코'} ${verb} 월 ${rev} 파는 ${age}`, sub: s('"하루에 300개 그냥 팔려요"') },
+    ],
+    'B': [
+      { main: `월 ${rev} 버는 ${age}`, sub: s(biz) },
+      { main: `${biz}으로 월 ${rev} 버는 ${age}`, sub: s('') },
+      { main: `퇴근하고 집에서 월 ${rev} 찍는 ${age}`, sub: s('부업으로...') },
+      cost && { main: `0원으로 ${biz} 시작해서 월 ${rev}`, sub: s('') },
+    ],
+    'C': [
+      { main: `"하루 2시간만 일해요" 월 ${rev} 버는 ${age}`, sub: s('') },
+      { main: `"이거 왜 안해요?" ${biz} 월 ${rev}`, sub: s('') },
+      { main: `부업으로 시작하고 퇴사했습니다!`, sub: s(`→ 한달에 월 ${rev}`) },
+    ],
+    'F': [
+      { main: `${biz} 소싱 꿀팁`, sub: '', warn: true },
+      { main: `${biz} 처음부터 끝까지 알려드립니다`, sub: '', warn: true },
+      { main: `${biz} 시작! 뭐부터 해야할지 모르겠다면`, sub: '', warn: true },
+    ],
+  };
+
+  // null/false 필터링
+  const result = {};
+  for (const [grade, tpls] of Object.entries(templates)) {
+    result[grade] = tpls.filter(Boolean);
+  }
+  return result;
+}
+
+// ── 제목 추천 (썸네일과 다르게) ──
+function generateTitle(inp, cat) {
+  const rev = inp.revenue || 'X만원';
+  const age = inp.age || 'XX살';
+  const brand = inp.brand || '';
+  const biz = inp.bizType || '부업';
+
+  const titles = {
+    '명품': [
+      `다들 모르는 '${brand||'명품'}' 유통 루트 발견하고 월 ${rev} 쓸어담고 퇴사 성공한 ${age}`,
+      `${brand||'명품'} 정가의 반값에 공급받아 월 ${rev} 찍는 ${age}의 비밀`,
+    ],
+    'K뷰티': [
+      `다들 모르는 '동남아 역직구' 발견하고 월 ${rev} 쓸어담고 퇴사 성공한 ${age}`,
+      `${brand||'올리브영'} 화장품 동남아에 월 ${rev}씩 파는 ${age}`,
+    ],
+    '패션': [
+      `직장 때려치고 일본 쇼핑몰에 ${brand||'무신사'} 떼다 월${rev}씩 파는 ${age}`,
+      `남들 다 쿠팡 할때 일본에 ${brand||'K패션'} 팔아 매달 연봉 버는 ${age}`,
+    ],
+    'AI디지털': [
+      `"부업으로 이걸 안하더라구요" AI로 월 ${rev} 버는 ${age}`,
+      `99%가 모르는 ${biz} 발견하고 월 ${rev} 찍는 ${age}`,
+    ],
+    '부동산': [
+      `소액으로 ${brand||'빌라'} 사서 ${rev} 번 ${age}의 투자법`,
+      `${brand||'부동산'} 경매로 인생역전한 ${age}`,
+    ],
+    '일반': [
+      `다들 모르는 '틈새시장' 발견하고 월 ${rev} 쓸어담고 퇴사 성공한 ${age}`,
+      `남들 다 쿠팡 할때 ${brand ? brand+'에 ' : ''}${biz}으로 매달 연봉 버는 ${age}`,
+      `"부업으로 이걸 안하더라구요" 하루 2시간 일하고 월 ${rev} 버는 ${age}`,
+    ],
+  };
+  const pool = titles[cat] || titles['일반'];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// ── UI 함수들 ──
 function getInputs() {
   return {
     title: document.getElementById('title').value.trim(),
@@ -269,144 +376,57 @@ function getInputs() {
   };
 }
 
-function fillTemplate(tpl, inp) {
-  let main = tpl.main;
-  let sub = tpl.sub;
-
-  const rev = inp.revenue || 'X만원';
-  const age = inp.age || 'XX살';
-  const brand = inp.brand || '브랜드';
-  const biz = inp.bizType || '부업';
-  const cost = inp.cost || 'X원';
-  const verb = inp.verb || VERBS[Math.floor(Math.random()*3)];
-
-  main = main.replace(/{revenue}/g, rev).replace(/{age}/g, age)
-    .replace(/{brand}/g, brand).replace(/{biz}/g, biz)
-    .replace(/{cost}/g, cost).replace(/{verb}/g, verb)
-    .replace(/{x}/g, String(Math.floor(Math.random()*5)+1));
-
-  sub = sub.replace(/{revenue}/g, rev).replace(/{age}/g, age)
-    .replace(/{brand}/g, brand).replace(/{biz}/g, biz)
-    .replace(/{cost}/g, cost).replace(/{x}/g, String(Math.floor(Math.random()*10)+1));
-
-  // 서브 텍스트 오버라이드
-  if (inp.sub99) sub = SUBS_99[Math.floor(Math.random()*SUBS_99.length)];
-  else if (inp.subEasy) sub = SUBS_EASY[Math.floor(Math.random()*SUBS_EASY.length)];
-  else if (inp.subQuote) sub = SUBS_QUOTE[Math.floor(Math.random()*SUBS_QUOTE.length)];
-  else if (inp.subCta) sub = SUBS_CTA[Math.floor(Math.random()*SUBS_CTA.length)];
-  else if (inp.subNone) sub = '';
-
-  // 플레이스홀더가 그대로 남은 경우만 건너뛰기
-  if (main === '브랜드 떼다 팔아 월 X만원 버는 XX살' && !inp.brand && !inp.revenue && !inp.age) return null;
-
-  return { main, sub, warn: tpl.warn || false };
-}
-
-// S등급 원가 템플릿 - 원가 없으면 대체 생성
-function generateFallbacks(grade, inp) {
-  const rev = inp.revenue || 'X만원';
-  const age = inp.age || 'XX살';
-  const brand = inp.brand || '';
-  const biz = inp.bizType || '부업';
-  const verb = inp.verb || '팔아서';
-
-  const fallbacks = {
-    'S+': [
-      { main: `${brand || biz} 떼다 팔아 월 ${rev} 버는 ${age}`, sub: '99%는 몰라요' },
-      { main: `아는 사람만 꿀 빨고 있는 월 ${rev} 블루오션 부업`, sub: '99%는 몰라요' },
-      { main: `${brand || biz} ${verb} 월 ${rev} ${age}`, sub: '"쿠팡 왜 해요?"' },
-    ],
-    'S': [
-      { main: `직장 때려치고 ${biz}으로 월 ${rev}씩 법니다`, sub: '뻔한 부업 아님X' },
-      { main: `요즘 MZ들은 쿠팡 말고 이걸로 돈 쓸어담아요`, sub: `월 ${rev} 블루오션` },
-      { main: `남들 다 쿠팡 할때 ${biz}으로 월 ${rev} 쓸어담는`, sub: '' },
-    ],
-    'A': [
-      { main: `${biz} ${verb} 월 ${rev} 버는 ${age}`, sub: '' },
-      { main: `회사 때려치고 ${biz} 매달 연봉버는 ${age}`, sub: '' },
-      { main: `외국인들만 꿀 빨고 있는 월 ${rev} ${biz}`, sub: '99%가 몰라서 못해요' },
-      { main: `AI로 ${biz} 월 ${rev} 찍는 ${age}`, sub: '대부분 몰라서 안해요' },
-      { main: `${brand || biz} ${verb} 월 ${rev} 찍는 ${age}`, sub: '이게 된다고...?' },
-    ],
-    'B': [
-      { main: `월 ${rev} 버는 ${age}`, sub: biz },
-      { main: `${biz}으로 월 ${rev} 버는 ${age}`, sub: '' },
-      { main: `퇴근하고 집에서 월 ${rev} 찍는 ${age}`, sub: '부업으로...' },
-      { main: `0원으로 ${biz} 시작해서 월 ${rev}`, sub: '하루에 그냥 팔려요!' },
-    ],
-    'C': [
-      { main: `"하루 2시간만 일해요" 월 ${rev} 버는 ${age}`, sub: '' },
-      { main: `"이거 왜 안해요?" ${biz} 월 ${rev}`, sub: '' },
-      { main: `부업으로 시작하고 퇴사했습니다!`, sub: `→ 한달에 월 ${rev} 버는` },
-    ],
-    'F': [
-      { main: `${biz} 소싱 꿀팁`, sub: '', warn: true },
-      { main: `${biz} 처음부터 끝까지 알려드립니다`, sub: '', warn: true },
-      { main: `${biz} 시작! 뭐부터 해야할지 모르겠다면`, sub: '', warn: true },
-    ],
-  };
-  return fallbacks[grade] || [];
-}
-
-function generateTitle(inp) {
-  const rev = inp.revenue || 'X만원';
-  const age = inp.age || 'XX살';
-  const brand = inp.brand || '';
-  const biz = inp.bizType || '부업';
-
-  const titleTemplates = [
-    `다들 모르는 '틈새시장' 발견하고 월 ${rev} 쓸어담고 퇴사 성공한 ${age}`,
-    `남들 다 쿠팡 할때 ${brand ? brand+'에 ' : ''}${biz}으로 매달 연봉 버는 ${age}`,
-    `${brand || biz} ${age}가 월 ${rev} 찍는 비결`,
-    `"부업으로 이걸 안하더라구요" 하루 2시간 일하고 월 ${rev} 버는 ${age}`,
-  ];
-  return titleTemplates[Math.floor(Math.random()*titleTemplates.length)];
-}
-
 function charClass(len) {
   if (len >= 11 && len <= 20) return 'char-count';
   if (len >= 8 && len <= 25) return 'char-count warn';
   return 'char-count bad';
 }
 
+const GRADE_META = {
+  'S+': { color: 'Splus', expect: '30만+', desc: '' },
+  'S':  { color: 'S', expect: '15만+', desc: '' },
+  'A':  { color: 'A', expect: '8만+', desc: '' },
+  'B':  { color: 'B', expect: '3만+', desc: '' },
+  'C':  { color: 'C', expect: '1만', desc: '' },
+  'F':  { color: 'F', expect: '3천↓', desc: '' },
+};
+
 function generate() {
   const inp = getInputs();
+  const cat = detectCategory(inp);
+  const templates = getTemplates(cat, inp);
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = '';
-  setTimeout(() => resultsDiv.scrollIntoView({behavior:'smooth', block:'start'}), 100);
+
+  // 감지된 카테고리 표시
+  const catLabel = cat === '일반' ? '기본' : cat;
+  resultsDiv.innerHTML = `<div style="text-align:center;font-size:12px;color:#7c83ff;margin-bottom:8px">감지된 맥락: <strong>${catLabel}</strong> ${inp.brand ? '('+inp.brand+')' : ''}</div>`;
 
   const grades = ['S+','S','A','B','C','F'];
 
   for (const grade of grades) {
-    const pat = PATTERNS[grade];
-    const cards = [];
-
-    for (const tpl of pat.templates) {
-      const result = fillTemplate(tpl, inp);
-      if (!result) continue;
-      if (cards.some(c => c.main === result.main)) continue;
-      cards.push(result);
-    }
-
-    // fallback 추가
-    const fb = generateFallbacks(grade, inp);
-    for (const f of fb) {
-      if (cards.some(c => c.main === f.main)) continue;
-      cards.push(f);
-    }
-
+    const cards = templates[grade] || [];
     if (cards.length === 0) continue;
+
+    // 중복 제거
+    const unique = [];
+    const seen = new Set();
+    for (const c of cards) {
+      if (!seen.has(c.main)) { seen.add(c.main); unique.push(c); }
+    }
+
+    const meta = GRADE_META[grade];
+    const titleSugg = grade !== 'F' ? generateTitle(inp, cat) : '';
 
     const sectionHtml = `
       <div class="grade-section">
         <div class="grade-header">
-          <span class="grade-badge grade-${pat.color}">${pat.label}</span>
-          <span class="grade-info">기대 조회수 ${pat.expect} | ${pat.desc}</span>
+          <span class="grade-badge grade-${meta.color}">${grade}</span>
+          <span class="grade-info">기대 조회수 ${meta.expect} | 맥락: ${catLabel}</span>
         </div>
         <div class="card-list">
-          ${cards.map((c, i) => {
-            const mainLen = c.main.replace(/[{}]/g,'').length;
-            const titleSuggestion = grade !== 'F' ? generateTitle(inp) : '';
+          ${unique.map(c => {
+            const mainLen = c.main.length;
             return `
               <div class="card" ${c.warn ? 'style="border-color:#ef4444;opacity:0.7"' : ''}>
                 <div class="card-actions">
@@ -420,10 +440,10 @@ function generate() {
                   ${c.sub ? `<span>서브 ${c.sub.length}자</span>` : ''}
                 </div>
                 ${c.warn ? '<div class="card-pattern">⛔ 교육형 단독은 조회수 3천 이하. 수익 숫자를 메인에 추가하세요.</div>' : ''}
-                ${titleSuggestion ? `
+                ${titleSugg && !c.warn ? `
                   <div class="title-section">
                     <div class="title-label">💡 제목 추천 (썸네일과 다르게):</div>
-                    <div class="title-text">${titleSuggestion}</div>
+                    <div class="title-text">${titleSugg}</div>
                   </div>
                 ` : ''}
               </div>
@@ -434,6 +454,8 @@ function generate() {
     `;
     resultsDiv.innerHTML += sectionHtml;
   }
+
+  setTimeout(() => resultsDiv.scrollIntoView({behavior:'smooth', block:'start'}), 100);
 }
 
 function copyText(btn, text) {
@@ -449,8 +471,6 @@ function pickThumb(grade, main, sub) {
   if (history.length > 30) history.pop();
   localStorage.setItem('thumbHistory', JSON.stringify(history));
   renderHistory();
-
-  // 피드백
   const btn = event.target;
   btn.textContent = '✓ 저장됨';
   btn.style.background = '#16a34a';
@@ -461,12 +481,7 @@ function renderHistory() {
   const history = JSON.parse(localStorage.getItem('thumbHistory') || '[]');
   const section = document.getElementById('historySection');
   const list = document.getElementById('historyList');
-
-  if (history.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
-
+  if (history.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   list.innerHTML = history.map((h, i) => `
     <div class="history-item">
@@ -483,8 +498,8 @@ function delHistory(i) {
   renderHistory();
 }
 
-// 초기 히스토리 렌더
 renderHistory();
+
 </script>
 </body>
 </html>
